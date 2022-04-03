@@ -1,0 +1,19 @@
+version: "3.3"
+
+services:
+  go-blog:
+    build: ./src
+    container_name: go-blog
+    ports:
+      - 8080:8080
+    depends_on:
+      - mongodb-blog
+
+  mongodb-blog:
+    image: mongo
+    container_name: mongodb-blog
+    volumes:
+      - ./mongodata:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
