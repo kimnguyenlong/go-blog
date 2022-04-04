@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -21,8 +22,15 @@ type PostController interface {
 	CreatePost() gin.HandlerFunc
 	GetPosts() gin.HandlerFunc
 	GetSinglePost() gin.HandlerFunc
+	DeletePost() gin.HandlerFunc
+	UpdatePost() gin.HandlerFunc
+
 	CreateComment() gin.HandlerFunc
 	GetComments() gin.HandlerFunc
+	DeleteComment() gin.HandlerFunc
+	UpdateComment() gin.HandlerFunc
+	CreateReply() gin.HandlerFunc
+	GetReplies() gin.HandlerFunc
 }
 
 type postController struct {
@@ -192,6 +200,98 @@ func (ctr postController) GetSinglePost() gin.HandlerFunc {
 	}
 }
 
+func (ctr postController) DeletePost() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, err := primitive.ObjectIDFromHex(ctx.GetString("uid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		pid, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		filter := bson.D{
+			{
+				Key:   "_id",
+				Value: pid,
+			},
+			{
+				Key:   "user_id",
+				Value: uid,
+			},
+		}
+		result, err := ctr.postModel.Base.DeleteOne(filter)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		if result.DeletedCount < 1 {
+			panic(customerror.NewAPIError("No post found!", http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"message": "Delete a post successfully",
+		})
+	}
+}
+
+func (ctr postController) UpdatePost() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, err := primitive.ObjectIDFromHex(ctx.GetString("uid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		pid, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		var updateData entity.Post
+		err = ctx.BindJSON(&updateData)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		filter := bson.D{
+			{
+				Key:   "_id",
+				Value: pid,
+			},
+			{
+				Key:   "user_id",
+				Value: uid,
+			},
+		}
+		update := bson.D{}
+
+		if updateData.Title != "" {
+			update = append(update, bson.E{Key: "$set", Value: bson.D{{Key: "title", Value: updateData.Title}}})
+		}
+		if updateData.Description != "" {
+			update = append(update, bson.E{Key: "$set", Value: bson.D{{Key: "description", Value: updateData.Description}}})
+		}
+		if updateData.Content != "" {
+			update = append(update, bson.E{Key: "$set", Value: bson.D{{Key: "content", Value: updateData.Content}}})
+		}
+		if len(updateData.Topics) > 0 {
+			update = append(update, bson.E{Key: "$set", Value: bson.D{{Key: "topics", Value: updateData.Topics}}})
+		}
+
+		if len(update) > 0 {
+			update = append(update, bson.E{Key: "$set", Value: bson.D{{Key: "updated", Value: time.Now().Unix()}}})
+		}
+
+		opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+		var updatedPost entity.Post
+		err = ctr.postModel.Base.FindOneAndUpdateOne(filter, update, opts).Decode(&updatedPost)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"message": "Update a post successfully",
+			"data":    updatedPost,
+		})
+	}
+}
+
 func (ctr postController) CreateComment() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		uid := ctx.GetString("uid")
@@ -235,6 +335,10 @@ func (ctr postController) GetComments() gin.HandlerFunc {
 				Key:   "post_id",
 				Value: pObjID,
 			},
+			{
+				Key:   "parent_id",
+				Value: nil,
+			},
 		}
 		var comments []entity.Comment
 		cursor, err := ctr.commentModel.Base.Find(filter)
@@ -249,6 +353,143 @@ func (ctr postController) GetComments() gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, gin.H{
 			"error": false,
 			"data":  comments,
+		})
+	}
+}
+
+func (ctr postController) DeleteComment() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, err := primitive.ObjectIDFromHex(ctx.GetString("uid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		pid, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		cid, err := primitive.ObjectIDFromHex(ctx.Param("cid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		filter := bson.M{
+			"_id":     cid,
+			"user_id": uid,
+			"post_id": pid,
+		}
+		result, err := ctr.commentModel.Base.DeleteOne(filter)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		if result.DeletedCount < 1 {
+			panic(customerror.NewAPIError("No comment found!", http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"message": "Delete a comment successfully",
+		})
+	}
+}
+
+func (ctr postController) UpdateComment() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, err := primitive.ObjectIDFromHex(ctx.GetString("uid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		pid, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		cid, err := primitive.ObjectIDFromHex(ctx.Param("cid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		var updateData entity.Comment
+		err = ctx.BindJSON(&updateData)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		filter := bson.M{
+			"_id":     cid,
+			"user_id": uid,
+			"post_id": pid,
+		}
+		update := bson.M{}
+		if updateData.Content != "" {
+			update["$set"] = bson.M{"content": updateData.Content, "updated": time.Now().Unix()}
+		}
+		var updatedComment entity.Comment
+		opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+		err = ctr.commentModel.Base.FindOneAndUpdateOne(filter, update, opts).Decode(&updatedComment)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"message": "Update a comment successfully",
+			"data":    updatedComment,
+		})
+	}
+}
+
+func (ctr postController) CreateReply() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, err := primitive.ObjectIDFromHex(ctx.GetString("uid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		pid, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		cid, err := primitive.ObjectIDFromHex(ctx.Param("cid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		var reply entity.Comment
+		err = ctx.BindJSON(&reply)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		now := time.Now().Unix()
+		reply.ParentID = cid
+		reply.UserID = uid
+		reply.PostID = pid
+		reply.Created = now
+		reply.Updated = now
+		newComment, err := ctr.commentModel.Save(reply)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"message": "Reply a comment successfully",
+			"data":    newComment,
+		})
+	}
+}
+
+func (ctr postController) GetReplies() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		cid, err := primitive.ObjectIDFromHex(ctx.Param("cid"))
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		filter := bson.M{
+			"parent_id": cid,
+		}
+		var replies []entity.Comment
+		cursor, err := ctr.commentModel.Base.Find(filter)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		err = cursor.All(context.Background(), &replies)
+		if err != nil {
+			panic(customerror.NewAPIError(err.Error(), http.StatusBadRequest))
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"error": false,
+			"data":  replies,
 		})
 	}
 }

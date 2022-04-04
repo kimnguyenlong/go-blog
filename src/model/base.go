@@ -50,7 +50,7 @@ func (base Base) FindOne(filter bson.D, opts ...*options.FindOneOptions) *mongo.
 	return base.collection.FindOne(context.Background(), filter, opts...)
 }
 
-func (base Base) Find(filter bson.D, opts ...*options.FindOptions) (*mongo.Cursor, error) {
+func (base Base) Find(filter interface{}, opts ...*options.FindOptions) (*mongo.Cursor, error) {
 	return base.collection.Find(context.Background(), filter, opts...)
 }
 
@@ -58,12 +58,16 @@ func (base Base) DeleteMany(filter bson.D, opts ...*options.DeleteOptions) (*mon
 	return base.collection.DeleteMany(context.Background(), filter, opts...)
 }
 
-func (base Base) DeleteOne(filter bson.D, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+func (base Base) DeleteOne(filter interface{}, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
 	return base.collection.DeleteOne(context.Background(), filter, opts...)
 }
 
-func (base Base) FinOneAndUpdateOne(filter bson.D, update bson.D, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+func (base Base) FindOneAndUpdateOne(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
 	return base.collection.FindOneAndUpdate(context.Background(), filter, update, opts...)
+}
+
+func (base Base) UpdateOne(filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+	return base.collection.UpdateOne(context.Background(), filter, update, opts...)
 }
 
 func (base Base) BulkWrite(models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {

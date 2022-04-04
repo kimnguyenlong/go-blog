@@ -18,6 +18,9 @@ var CommentSchema = bson.M{
 		"_id": bson.M{
 			"bsonType": "objectId",
 		},
+		"parent_id": bson.M{
+			"bsonType": "objectId",
+		},
 		"user_id": bson.M{
 			"bsonType":    "objectId",
 			"description": "user_id is required",
@@ -29,12 +32,6 @@ var CommentSchema = bson.M{
 		"content": bson.M{
 			"bsonType":    "string",
 			"description": "content is required",
-		},
-		"replies": bson.M{
-			"bsonType": "array",
-			"items": bson.M{
-				"bsonType": "object",
-			},
 		},
 		"created": bson.M{
 			"bsonType":    "number",
