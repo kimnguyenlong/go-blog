@@ -17,26 +17,26 @@ func NewBase(db *mongo.Database, name string, schema bson.M) *Base {
 	validator := bson.M{
 		"$jsonSchema": schema,
 	}
-	opts := options.CreateCollection().SetValidator(validator)
-	err := db.CreateCollection(context.Background(), name, opts)
-	if err != nil {
-		fmt.Printf("Error when creating collection: %v\n", err.Error())
-		updateValidatorCmd := bson.D{
-			{
-				Key:   "collMod",
-				Value: name,
-			},
-			{
-				Key:   "validator",
-				Value: validator,
-			},
-		}
-		err = db.RunCommand(context.Background(), updateValidatorCmd).Err()
-		if err != nil {
-			fmt.Printf("Error when updating collection validator: %v\n", err.Error())
+
+	// update schema if the collection exists
+	updateValidatorCmd := bson.M{
+		"collMod":   name,
+		"validator": validator,
+	}
+	err := db.RunCommand(context.Background(), updateValidatorCmd).Err()
+	if err == nil {
+		return &Base{
+			collection: db.Collection(name),
 		}
 	}
 
+	// create a new collection if the collection doesn't exist
+	opts := options.CreateCollection().SetValidator(validator)
+	err = db.CreateCollection(context.Background(), name, opts)
+	if err != nil {
+		fmt.Printf("Error when creating collection: %v\n", err.Error())
+
+	}
 	return &Base{
 		collection: db.Collection(name),
 	}
