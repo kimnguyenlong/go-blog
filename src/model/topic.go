@@ -38,10 +38,16 @@ var TopicSchema = bson.M{
 	},
 }
 
+var topic *Topic = nil
+
 func NewTopic(db *mongo.Database) *Topic {
-	return &Topic{
+	if topic != nil {
+		return topic
+	}
+	topic = &Topic{
 		Base: NewBase(db, "topics", TopicSchema),
 	}
+	return topic
 }
 
 func (topic Topic) Save(newTopic entity.Topic) (entity.Topic, error) {

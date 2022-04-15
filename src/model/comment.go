@@ -48,10 +48,16 @@ type Comment struct {
 	Base *Base
 }
 
+var comment *Comment = nil
+
 func NewComment(db *mongo.Database) *Comment {
-	return &Comment{
+	if comment != nil {
+		return comment
+	}
+	comment = &Comment{
 		Base: NewBase(db, "comments", CommentSchema),
 	}
+	return comment
 }
 
 func (comment Comment) Save(newComment entity.Comment) (entity.Comment, error) {

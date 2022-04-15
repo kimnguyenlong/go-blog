@@ -58,10 +58,16 @@ type Post struct {
 	Base *Base
 }
 
+var post *Post = nil
+
 func NewPost(db *mongo.Database) *Post {
-	return &Post{
+	if post != nil {
+		return post
+	}
+	post = &Post{
 		Base: NewBase(db, "posts", PostSchema),
 	}
+	return post
 }
 
 func (post Post) Save(newPost entity.Post) (entity.Post, error) {

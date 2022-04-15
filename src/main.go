@@ -5,19 +5,17 @@ import (
 	"blog/middleware"
 	"blog/route"
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic(fmt.Errorf("Error when loading .env: %v", err.Error()))
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	panic(fmt.Errorf("Error when loading .env: %v", err.Error()))
+	// }
 
 	dbCon := db.Connect(os.Getenv("MONGODB_CONNECTTION_URI"))
 	defer dbCon.Disconnect(context.TODO())

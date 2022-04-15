@@ -6,6 +6,10 @@ services:
     container_name: go-blog
     ports:
       - 8080:8080
+    environment:
+      MONGODB_CONNECTTION_URI : mongodb://root:root@mongodb-blog:27017/?authSource=admin&w=majority&readPreference=primary&appname=MongoDB%20Compass&retryWrites=true&directConnection=true&ssl=false
+      JWT_SECRET : jwtsecret
+      JWT_LIFE_TIME : 19
     depends_on:
       - mongodb-blog
 

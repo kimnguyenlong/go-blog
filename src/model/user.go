@@ -63,10 +63,16 @@ var UserSchema = bson.M{
 	},
 }
 
+var user *User = nil
+
 func NewUser(db *mongo.Database) *User {
-	return &User{
+	if user != nil {
+		return user
+	}
+	user = &User{
 		Base: NewBase(db, "users", UserSchema),
 	}
+	return user
 }
 
 func (user User) Save(newUser entity.User) (entity.User, error) {
